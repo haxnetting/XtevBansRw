@@ -1,0 +1,182 @@
+on load:
+    create vixio bot:
+        enable all default intents
+        login to "" with name "Moderation"
+        set online status of bot "Moderation" to do not disturb
+        set presence of bot "Moderation" to watching "Your Server Name"
+
+options:
+   prefix: &4&lYourServert &8&l|
+   permsmsg: &eIm sorry but it seems u dont have permission for this command if u think this is a mistake contact the server owner
+   id:937390215801217065
+   botty:Moderation
+
+function convertTime(time: text) :: timespan:
+    set {_c::s} to "seconds"
+    set {_c::m} to "minutes"
+    set {_c::h} to "hours"
+    set {_c::d} to "days"
+    set {_l} to length of {_time}
+    set {_a} to {_l} - 1
+    set {_l::1} to first {_a} characters of {_time}
+    set {_l::2} to last character of {_time}
+    set {_t} to "%{_l::1}% %{_c::%{_l::2}%}%"
+    return ({_t} parsed as timespan)
+
+command /tempban [<Offline player>] [<text>] [<Text>]:
+    permission: bans.staff
+    permission message: {@prefix} {@permsmsg}
+    trigger:
+        if arg 1 is set:
+            if arg 2 is set:
+                if arg 3 is set:
+                    set {_time} to convertTime(arg-2)
+                    set {punishments::banned::%uuid of arg-1%} to true
+                    set {punishments::banTime::%uuid of arg-1%} to now
+                    set {punishments::banReason::%uuid of arg-1%} to arg-3
+                    set {punishments::banLength::%uuid of arg-1%} to {_time}
+                    set {punishments::banStaff::%uuid of arg-1%} to player
+                    kick arg 1 due to "&a&lBAN &8&l∙ &rYou have been banned %nl%&a&lTime &8&l∙&r %{_time}%%nl%&a&lReason &8&l∙ &r%{punishments::banReason::%uuid of arg-1%}%%nl%&a&lBanned by&8&l∙ &r%player%"
+                    broadcast "{@prefix} &a&l&n%player%&8&l temp banned &a&l&n%arg-1%&8&l for &a&l&n%arg-3%&8&l (&7%{_time}%&8&l)"
+                    send "BAN ∙ %arg-1% | Time ∙ %arg-2% | Reason ∙ %{punishments::banReason::%uuid of arg-1%}% | Banned by ∙ %player%" to channel with id "{@id}" with "{@botty}"
+                else:
+                    send "{@prefix} &f/tempban <player> <time> <reason>" to player
+            else:
+                send "{@prefix} &f/tempban <player> <time> <reason>" to player
+        else:
+            send "{@prefix} &f/tempban <player> <time> <reason>" to player
+
+
+
+command /ban [<Offline player>] [<Text>]:
+    permission: bans.staff
+    permission message: {@prefix} {@permsmsg}
+    trigger:
+        if arg 1 is set:
+            if arg 2 is set:
+                set {punishments::banned::%uuid of arg-1%} to true
+                set {punishments::banReason::%uuid of arg-1%} to arg-2
+                set {punishments::banStaff::%uuid of arg-1%} to player
+                kick arg 1 due to "&a&lBAN &8&l∙ &rYou have been banned %nl%&a&lTime &8&l∙&r Permanent%nl%&a&lReason &8&l∙ &r%{punishments::banReason::%uuid of arg-1%}%%nl%&a&lBanned by&8&l∙ &r%player%"
+                broadcast "{@prefix} &a&l&n%player%&8&l Perm banned &a&l&n%arg-1%&8&l for &a&l&n%arg-2% "
+                send "BAN ∙ %arg-1% | Time ∙ Permanent | Reason ∙ %{punishments::banReason::%uuid of arg-1%}% | Banned by ∙ %player%" to channel with id "{@id}" with "{@botty}"
+
+            else:
+                send "{@prefix} &f/ban <player> <reason>" to player
+        else:
+            send "{@prefix} &f/ban <player> <reason>" to player
+
+command /unban [<Offline player>]:
+    permission: bans.staff
+    permission message: {@prefix} {@permsmsg}
+    trigger:
+        if arg 1 is set:
+            if {punishments::banned::%uuid of arg-1%} is set:
+                unban arg-1
+                delete {punishments::banned::%uuid of arg-1%}
+                delete {punishments::banLength::%uuid of arg-1%}
+                delete {punishments::banTime::%uuid of arg-1%}
+                delete {punishments::banStaff::%uuid of arg-1%}
+                delete {punishments::banReason::%uuid of arg-1%}
+                broadcast "{@prefix} &a&l&n%player%&8&l Has unbanned &a&l&n%arg-1%"
+                send "UNBAN ∙ %arg-1% | Staff ∙ %player%" to channel with id "{@id}" with "{@botty}"
+            else:
+                send "{@prefix} &a&l&n%arg-1%&8&l Is currently not banned" to player
+        else:
+            send "{@prefix} &e/unban <player>"
+
+on connect:
+    if {punishments::banned::%uuid of player%} is set:
+        set {_banned} to difference between now and {punishments::banTime::%uuid of player%}
+        if {_banned} >= {punishments::banLength::%uuid of player%}:
+            delete {punishments::banned::%uuid of player%}
+        else:
+            if {punishments::banLength::%uuid of player%} is not set:
+                kick player due to "{@prefix} &rYou have been banned %nl%&a&lTime &8&l∙ &rPermanent%nl%&a&lReason &8&l∙ &r%{punishments::banReason::%uuid of player%}%%nl%&a&lBanned by&8&l∙ &r%{punishments::banStaff::%uuid of player%}%"
+            else:
+                set {_elapsed} to difference between now and {punishments::banTime::%uuid of player%}
+                set {_remaining} to difference between {_elapsed} and {punishments::banLength::%uuid of player%}
+                kick player due to "{@prefix} &rYou have been banned %nl%&a&lTime &8&l∙ &r%{_remaining}%%nl%&a&lReason &8&l∙ &r%{punishments::banReason::%uuid of player%}%%nl%&a&lBanned by&8&l∙ &r%{punishments::banStaff::%uuid of player%}%"
+
+command /mute [<Offline player>] [<text>]:
+    permission: mute.staff
+    permission message: {@prefix} {@permsmsg}
+    trigger:
+        if arg-1 is set:
+            if arg-2 is set:
+                broadcast "{@prefix} &a&l&n%player%&8&l Permanently muted &a&l&n%arg-1%&8&l for &a&l&n%arg-2%"
+                set {punishments::mutedperm::%uuid of arg-1%} to true
+                set {punishments::muteReason::%uuid of arg-1%} to arg-2
+                set {punishments::muteStaff::%uuid of arg-1%} to player
+                set {punishments::mute::%uuid of arg-1%} to true
+                send "MUTE ∙ %arg-1% | Time ∙ Permanent | Reason ∙ %{punishments::muteReason::%uuid of arg-1%}% | Muted by ∙ %player%" to channel with id "{@id}" with "{@botty}"
+            else:
+                send "{@prefix} &e/mute <player> <reason>" to player
+        else:
+            send "{@prefix} &e/mute <player> <reason>" to player
+
+command /tempmute [<Offline player>] [<text>] [<text>]:
+    permission: mute.staff
+    permission message: {@prefix} {@permsmsg}
+    trigger:
+        if arg 1 is set:
+            if arg 2 is set:
+                if arg 3 is set:
+                    set {_time} to convertTime(arg-2)
+                    set {punishments::muted::%uuid of arg-1%} to true
+                    set {punishments::muteTime::%uuid of arg-1%} to now
+                    set {punishments::muteReason::%uuid of arg-1%} to arg-3
+                    set {punishments::muteStaff::%uuid of arg-1%} to player
+                    set {punishments::muteExpiry::%uuid of arg-1%} to {_time}
+                    broadcast "{@prefix} &a&l&n%player%&8&l muted &a&l&n%arg-1%&8&l for &a&l&n%arg-3%&8&l (&7%{_time}%&8&l)"
+                    send "MUTE ∙ %arg-1% | Time ∙ %arg-2% | Reason ∙ %{punishments::muteReason::%uuid of arg-1%}% | Muted by ∙ %player%" to channel with id "{@id}" with "{@botty}"
+                else:
+                    send "{@prefix} &e/tempmute <player> <time> <reason>" to player
+            else:
+                send "{@prefix} &e/tempmute <player> <time> <reason>" to player
+        else:
+            send "{@prefix} &e/tempmute <player> <time> <reason>" to player
+
+
+command /unmute [<Offline player>]:
+    permission: mute.staff
+    permission message: {@prefix} {@permsmsg}
+    trigger:
+        if arg-1 is set:
+            if {punishments::muted::%uuid of arg-1%} is set:
+                delete {punishments::muted::%uuid of arg-1%}
+                delete {punishments::muteExpiry::%uuid of arg-1%}
+                delete {punishments::muteTime::%uuid of arg-1%}
+                delete {punishments::muteStaff::%uuid of arg-1%}
+                delete {punishments::muteReason::%uuid of arg-1%}
+                broadcast "{@prefix} &a&l&n%arg-1%&8&l Has been unmuted by &a&l&n%player%"
+                send "UNMUTE ∙ %arg-1% | Staff ∙ %player%" to channel with id "{@id}" with "{@botty}"
+
+            else if {punishments::mutedperm::%uuid of arg-1%} is set:
+                broadcast "{@prefix} &a&l&n%arg-1%&8&l Has been unmuted by &a&l&n%player%"
+                send "UNMUTE ∙ %arg-1% | Staff ∙ %player%" to channel with id "{@id}" with "{@botty}"
+                delete {punishments::mutedperm::%uuid of arg-1%}
+                delete {punishments::muteReason::%uuid of arg-1%}
+                delete {punishments::muteStaff::%uuid of arg-1%}
+            
+            else if {punishments::muted::%uuid of arg-1%} is not set:
+                send "{@prefix} &a&l&n%arg-1%&8&l Is not muted" to player
+            
+            else if {punishments::mutedperm::%uuid of arg-1%} is not set:
+                send "{@prefix} &a&l&n%arg-1%&8&l Is not muted" to player
+        else:
+            send "{@prefix} &e/unmute <player>" to player
+
+on chat:
+    if {punishments::muted::%uuid of player%} is set:
+        set {_muted} to difference between now and {punishments::muteTime::%uuid of player%} 
+        if {_muted} >= {punishments::muteExpiry::%uuid of player%}:
+            delete {punishments::muted::%uuid of player%}
+        else:
+            cancel event
+            set {_elapsed} to difference between now and {punishments::muteTime::%uuid of player%}
+            set {_remaining} to difference between {_elapsed} and {punishments::muteExpiry::%uuid of player%}
+            send "{@prefix} &8&lYou are muted &8&l(&aRemaining Time &7%{_remaining}% &8&l)" to player
+    else if {punishments::mutedperm::%uuid of player%} is set:
+        cancel event
+        send "{@prefix} &8&lYou are permanently muted" to player
